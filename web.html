@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RemiAI - Secure Browser</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="./node_modules/lucide/dist/umd/lucide.min.js"></script>
+    <style>
+        /* --- LAYOUT RESET --- */
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: #fff;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        .app-container {
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* --- BROWSER AREA --- */
+        .browser-layout {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+            background: #fff;
+            position: relative;
+        }
+
+        /* --- SIDEBAR (Standard) --- */
+        .sidebar {
+            width: 240px;
+            background-color: #fff;
+            border-right: 1px solid #e5e7eb;
+            transition: width 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            padding: 15px;
+            box-sizing: border-box;
+            z-index: 50;
+        }
+
+        .sidebar.collapsed {
+            width: 70px;
+            padding: 15px 10px;
+        }
+
+        .sidebar-toggle {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: transparent;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            cursor: pointer;
+            padding: 4px;
+        }
+
+        .sidebar.collapsed .sidebar-toggle {
+            right: 50%;
+            transform: translateX(50%);
+        }
+
+        .sidebar.collapsed .brand span,
+        .sidebar.collapsed .new-chat-btn span,
+        .sidebar.collapsed .nav-label,
+        .sidebar.collapsed .sidebar-footer button span {
+            display: none !important;
+        }
+
+        .sidebar.collapsed .brand {
+            justify-content: center;
+        }
+
+        .sidebar.collapsed .nav-grid {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* --- COMPACT TOP BAR --- */
+        .browser-header {
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            border-bottom: 1px solid #e5e7eb;
+            background: #f8f9fa;
+        }
+
+        /* Tabs Row */
+        .tabs-container {
+            display: flex;
+            align-items: flex-end;
+            gap: 4px;
+            padding: 4px 10px 0;
+            height: 34px;
+            overflow-x: auto;
+            background: #e2e5e9;
+        }
+
+        .tab {
+            padding: 6px 12px;
+            background: #d1d5db;
+            border-radius: 8px 8px 0 0;
+            font-size: 11px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            max-width: 180px;
+            min-width: 100px;
+            height: 30px;
+            color: #4b5563;
+            position: relative;
+            user-select: none;
+        }
+
+        .tab.active {
+            background: #fff;
+            color: #2563eb;
+            font-weight: 600;
+            z-index: 10;
+            height: 34px;
+            border-top: 2px solid #2563eb;
+        }
+
+        .tab-title {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .tab-close {
+            font-size: 14px;
+            opacity: 0.6;
+            padding: 0 4px;
+            border-radius: 4px;
+        }
+
+        .tab-close:hover {
+            background: #fee2e2;
+            color: #ef4444;
+            opacity: 1;
+        }
+
+        .new-tab-btn {
+            border: none;
+            background: transparent;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 0 10px;
+            color: #666;
+        }
+
+        /* Navigation Row */
+        .nav-bar {
+            display: flex;
+            gap: 8px;
+            padding: 6px 10px;
+            align-items: center;
+            height: 44px;
+            background: #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+        }
+
+        .nav-btn {
+            background: transparent;
+            border: none;
+            padding: 6px;
+            border-radius: 6px;
+            cursor: pointer;
+            color: #555;
+            display: flex;
+            align-items: center;
+        }
+
+        .nav-btn:hover {
+            background: #f3f4f6;
+            color: #000;
+        }
+
+        #url-input {
+            flex: 1;
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 1px solid #e5e7eb;
+            background: #f3f4f6;
+            font-size: 13px;
+            outline: none;
+            transition: 0.2s;
+        }
+
+        #url-input:focus {
+            background: #fff;
+            border-color: #2563eb;
+        }
+
+        /* --- WEBVIEW AREA (Maximized) --- */
+        #webviews-container {
+            flex: 1;
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #fff;
+        }
+
+        /* The Class 'hidden' is used to toggle visibility WITHOUT destroying the webview */
+        webview {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: flex;
+        }
+
+        webview.hidden {
+            display: none !important;
+            height: 0;
+            width: 0;
+        }
+
+        /* --- START PAGE --- */
+        .start-page {
+            position: absolute;
+            inset: 0;
+            background-color: #f8f9fa;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 80px;
+            overflow-y: auto;
+            z-index: 5;
+        }
+
+        .start-page.hidden {
+            display: none !important;
+        }
+
+        .engine-grid {
+            display: flex;
+            gap: 30px;
+            margin-bottom: 50px;
+        }
+
+        .engine-card {
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 16px;
+            width: 140px;
+            height: 140px;
+            padding: 20px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: 0.2s;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
+        }
+
+        .engine-card:hover {
+            transform: translateY(-5px);
+            border-color: #2563eb;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .engine-icon {
+            font-size: 40px;
+            margin-bottom: 15px;
+        }
+
+        .engine-name {
+            font-weight: bold;
+            color: #333;
+        }
+
+        /* Bookmarks Section on Start Page */
+        .bookmarks-section {
+            width: 90%;
+            max-width: 600px;
+        }
+
+        .bk-label {
+            font-size: 12px;
+            font-weight: bold;
+            color: #888;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+        }
+
+        .bk-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .bk-chip {
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+
+        .bk-chip:hover {
+            border-color: #2563eb;
+            color: #2563eb;
+        }
+
+        .bk-del {
+            color: #ef4444;
+            font-weight: bold;
+            margin-left: 5px;
+            opacity: 0.5;
+        }
+
+        .bk-del:hover {
+            opacity: 1;
+        }
+
+        /* Dark Mode */
+        body.dark-mode .browser-layout,
+        body.dark-mode .start-page {
+            background: #1a1a1a;
+        }
+
+        body.dark-mode .browser-header,
+        body.dark-mode .nav-bar {
+            background: #252525;
+            border-color: #333;
+        }
+
+        body.dark-mode .tabs-container {
+            background: #1e1e1e;
+        }
+
+        body.dark-mode .tab {
+            background: #333;
+            color: #aaa;
+            border-bottom: none;
+        }
+
+        body.dark-mode .tab.active {
+            background: #1a1a1a;
+            color: #fff;
+            border-top-color: #60a5fa;
+        }
+
+        body.dark-mode #url-input {
+            background: #1a1a1a;
+            color: #fff;
+            border-color: #444;
+        }
+
+        body.dark-mode .nav-btn {
+            color: #ccc;
+        }
+
+        body.dark-mode .nav-btn:hover {
+            background: #333;
+        }
+
+        body.dark-mode .engine-card,
+        body.dark-mode .bk-chip {
+            background: #252525;
+            border-color: #333;
+        }
+
+        body.dark-mode .engine-name,
+        body.dark-mode .bk-chip {
+            color: #eee;
+        }
+
+        body.dark-mode .sidebar {
+            background: #1e1e1e;
+            border-color: #333;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-container">
+
+        <div class="sidebar" id="sidebar">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i data-lucide="chevrons-left"
+                    id="toggle-icon"></i></button>
+            <div class="brand"><img src="remiai.ico" class="brand-logo"><span>RemiAI</span></div>
+            <button onclick="window.location.href='index.html'" class="new-chat-btn"><i data-lucide="arrow-left"></i>
+                <span>Back</span></button>
+            <div class="nav-section">
+                <div class="nav-grid">
+                    <button class="nav-icon-btn" onclick="window.location.href='index.html'"><i
+                            data-lucide="message-circle"></i></button>
+                    <button class="nav-icon-btn active"><i data-lucide="globe"></i></button>
+                </div>
+            </div>
+            <div class="sidebar-footer"><button id="theme-toggle" class="theme-toggle"><i data-lucide="moon"></i>
+                    <span>Theme</span></button></div>
+        </div>
+
+        <div class="main-content">
+            <div class="browser-layout">
+
+                <div class="browser-header">
+                    <div class="tabs-container" id="tabs-container">
+                        <button class="new-tab-btn" onclick="createNewTab()">+</button>
+                    </div>
+                    <div class="nav-bar">
+                        <button class="nav-btn" onclick="goBack()"><i data-lucide="arrow-left" size="16"></i></button>
+                        <button class="nav-btn" onclick="goForward()"><i data-lucide="arrow-right"
+                                size="16"></i></button>
+                        <button class="nav-btn" onclick="reload()"><i data-lucide="rotate-cw" size="16"></i></button>
+                        <button class="nav-btn" onclick="goHome()"><i data-lucide="home" size="16"></i></button>
+
+                        <input type="text" id="url-input" placeholder="Search DuckDuckGo or enter URL...">
+
+                        <button class="nav-btn" onclick="navigate()"><i data-lucide="arrow-right-circle"
+                                size="18"></i></button>
+                        <button class="nav-btn" onclick="addBookmark()" style="color:#eab308"><i data-lucide="star"
+                                size="18"></i></button>
+                    </div>
+                </div>
+
+                <div id="webviews-container">
+
+                    <div id="start-page" class="start-page">
+                        <h1 style="margin-bottom:40px; color:var(--text-color);">Choose Your Engine</h1>
+
+                        <div class="engine-grid">
+                            <div class="engine-card" onclick="loadUrlInActive('https://duckduckgo.com')">
+                                <div class="engine-icon">🦆</div>
+                                <span class="engine-name">DuckDuckGo</span>
+                            </div>
+                            <div class="engine-card" onclick="loadUrlInActive('https://search.brave.com')">
+                                <div class="engine-icon">🦁</div>
+                                <span class="engine-name">Brave</span>
+                            </div>
+                        </div>
+
+                        <div class="bookmarks-section">
+                            <div class="bk-label">My Bookmarks</div>
+                            <div class="bk-list" id="bk-list">
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        // --- STATE ---
+        let tabs = [];
+        let activeTabId = null;
+        let bookmarks = JSON.parse(localStorage.getItem('remiai_bookmarks') || '[]');
+
+        // --- DOM ---
+        const tabContainer = document.getElementById('tabs-container');
+        const webViewContainer = document.getElementById('webviews-container');
+        const startPage = document.getElementById('start-page');
+        const urlInput = document.getElementById('url-input');
+        const bkList = document.getElementById('bk-list');
+
+        // --- INIT ---
+        window.onload = () => {
+            createNewTab(); // Start with 1 tab
+            renderBookmarks();
+            if (localStorage.getItem('remiai_theme') === 'dark') document.body.classList.add('dark-mode');
+        };
+
+        // --- TABS ---
+        function createNewTab(url = null) {
+            const id = Date.now();
+            const tab = { id, title: "New Tab", url: url };
+            tabs.push(tab);
+
+            // Create Webview
+            const wv = document.createElement('webview');
+            wv.id = `wv-${id}`;
+            wv.setAttribute('allowpopups', ''); // Essential for some sites
+            wv.src = url || "about:blank";
+
+            // Default to hidden, will be shown if active
+            wv.classList.add('hidden');
+
+            // Events
+            wv.addEventListener('did-start-loading', () => {
+                const t = tabs.find(x => x.id === id);
+                if (t) t.loading = true;
+                renderTabs();
+            });
+            wv.addEventListener('did-stop-loading', () => {
+                const t = tabs.find(x => x.id === id);
+                if (t) {
+                    t.loading = false;
+                    t.title = wv.getTitle();
+                    t.url = wv.getURL();
+                    if (id === activeTabId) updateOmnibox(t.url);
+                }
+                renderTabs();
+            });
+
+            // --- CRITICAL: NEW WINDOW FIX ---
+            // Intercepts "Open in new window" calls and opens them in a new TAB instead
+            wv.addEventListener('new-window', (e) => {
+                e.preventDefault();
+                createNewTab(e.url);
+            });
+            // --------------------------------
+
+            webViewContainer.appendChild(wv);
+            setActiveTab(id);
+        }
+
+        function setActiveTab(id) {
+            activeTabId = id;
+
+            // Manage Webview Visibility (CSS Class)
+            document.querySelectorAll('webview').forEach(el => {
+                if (el.id === `wv-${id}`) el.classList.remove('hidden');
+                else el.classList.add('hidden');
+            });
+
+            const t = tabs.find(x => x.id === id);
+
+            // Show/Hide Start Page based on URL
+            if (!t.url || t.url === 'about:blank') {
+                startPage.classList.remove('hidden');
+                urlInput.value = "";
+            } else {
+                startPage.classList.add('hidden');
+                urlInput.value = t.url;
+            }
+
+            renderTabs();
+        }
+
+        function closeTab(e, id) {
+            e.stopPropagation();
+            if (tabs.length === 1) {
+                // If closing last tab, just reset it
+                loadUrlInActive('about:blank');
+                return;
+            }
+
+            // Remove from array
+            tabs = tabs.filter(t => t.id !== id);
+
+            // Remove DOM
+            const el = document.getElementById(`wv-${id}`);
+            if (el) el.remove();
+
+            // Switch to previous if active was closed
+            if (activeTabId === id) {
+                setActiveTab(tabs[tabs.length - 1].id);
+            } else {
+                renderTabs();
+            }
+        }
+
+        function renderTabs() {
+            // Keep the "+" button at the end
+            const addBtn = tabContainer.lastElementChild;
+            tabContainer.innerHTML = '';
+
+            tabs.forEach(t => {
+                const div = document.createElement('div');
+                div.className = `tab ${t.id === activeTabId ? 'active' : ''}`;
+                div.innerHTML = `
+                    <span class="tab-title">${t.loading ? 'Loading...' : (t.title || 'New Tab')}</span>
+                    <span class="tab-close" onclick="closeTab(event, ${t.id})">×</span>
+                `;
+                div.onclick = () => setActiveTab(t.id);
+                tabContainer.appendChild(div);
+            });
+            tabContainer.appendChild(addBtn);
+        }
+
+        // --- NAVIGATION ---
+        function getActiveWV() { return document.getElementById(`wv-${activeTabId}`); }
+
+        function loadUrlInActive(url) {
+            const wv = getActiveWV();
+            if (wv) {
+                wv.src = url;
+                // Immediately update state
+                const t = tabs.find(x => x.id === activeTabId);
+                t.url = url;
+                startPage.classList.add('hidden');
+                updateOmnibox(url);
+            }
+        }
+
+        function navigate() {
+            let val = urlInput.value.trim();
+            if (!val) return;
+
+            // Simple URL detection
+            const isUrl = val.includes('.') && !val.includes(' ');
+            let target = val;
+
+            if (isUrl) {
+                if (!val.startsWith('http')) target = 'https://' + val;
+            } else {
+                // Default to DuckDuckGo search
+                target = `https://duckduckgo.com/?q=${encodeURIComponent(val)}`;
+            }
+            loadUrlInActive(target);
+        }
+
+        function updateOmnibox(url) {
+            if (url && url !== 'about:blank') urlInput.value = url;
+            else urlInput.value = "";
+        }
+
+        function goBack() {
+            const wv = getActiveWV();
+            if (wv && wv.canGoBack()) wv.goBack();
+            else goHome();
+        }
+        function goForward() { const wv = getActiveWV(); if (wv && wv.canGoForward()) wv.goForward(); }
+        function reload() { const wv = getActiveWV(); if (wv) wv.reload(); }
+        function goHome() { loadUrlInActive('about:blank'); startPage.classList.remove('hidden'); }
+
+        urlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') navigate(); });
+
+        // --- BOOKMARKS ---
+        function addBookmark() {
+            const wv = getActiveWV();
+            const url = wv.getURL();
+            const title = wv.getTitle();
+
+            if (!url || url === 'about:blank') return;
+
+            // Check duplicate
+            if (!bookmarks.some(b => b.url === url)) {
+                bookmarks.push({ url, title });
+                localStorage.setItem('remiai_bookmarks', JSON.stringify(bookmarks));
+                renderBookmarks();
+                alert("Bookmark Saved!");
+            }
+        }
+
+        function renderBookmarks() {
+            bkList.innerHTML = '';
+            bookmarks.forEach((b, i) => {
+                const div = document.createElement('div');
+                div.className = 'bk-chip';
+                // Clean title
+                let display = b.title.length > 20 ? b.title.substring(0, 20) + '...' : b.title;
+                div.innerHTML = `
+                    <span onclick="loadUrlInActive('${b.url}')">${display}</span>
+                    <span class="bk-del" onclick="removeBk(${i})">×</span>
+                `;
+                bkList.appendChild(div);
+            });
+        }
+
+        window.removeBk = (i) => {
+            bookmarks.splice(i, 1);
+            localStorage.setItem('remiai_bookmarks', JSON.stringify(bookmarks));
+            renderBookmarks();
+        };
+
+        // --- SIDEBAR ---
+        function toggleSidebar() {
+            const sb = document.getElementById('sidebar');
+            sb.classList.toggle('collapsed');
+            const icon = document.getElementById('toggle-icon');
+            if (sb.classList.contains('collapsed')) icon.setAttribute('data-lucide', 'chevrons-right');
+            else icon.setAttribute('data-lucide', 'chevrons-left');
+            lucide.createIcons();
+        }
+
+        document.getElementById('theme-toggle').addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            localStorage.setItem('remiai_theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+        });
+
+    </script>
+</body>
+
+</html>

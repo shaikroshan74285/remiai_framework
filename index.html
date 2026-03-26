@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RemiAI - bujji</title>
+    <link rel="icon" type="image/x-icon" href="remiai.ico">
+    <link rel="stylesheet" href="styles.css">
+    <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' http://127.0.0.1:5000; media-src 'self' blob: file:;">
+    <script src="./node_modules/lucide/dist/umd/lucide.min.js"></script>
+    <script src="./node_modules/marked/lib/marked.umd.js"></script>
+</head>
+
+<body class="">
+
+    <div class="app-container">
+        <!-- SIDEBAR -->
+        <div class="sidebar">
+            <div class="brand">
+                <img src="remiai.ico" alt="Logo" class="brand-logo">
+                <span>RemiAI</span>
+            </div>
+
+            <button id="new-chat-btn" class="new-chat-btn">
+                <i data-lucide="plus"></i> New Chat
+            </button>
+
+            <button id="manage-personas-btn" class="secondary-btn" style="margin-top: 5px;">
+                <i data-lucide="users"></i> Personas
+            </button>
+
+            <!-- COMPACT APP GRID -->
+            <div class="nav-section">
+                <div class="nav-label">Features</div>
+                <div class="nav-grid">
+                    <button class="nav-icon-btn active" onclick="switchView('chat')" title="Chat">
+                        <i data-lucide="message-circle"></i>
+                    </button>
+                    <!-- Redirects to web.html -->
+                    <button class="nav-icon-btn" onclick="window.location.href='web.html'" title="Web Browser">
+                        <i data-lucide="globe"></i>
+                    </button>
+                    <button class="nav-icon-btn" onclick="switchView('tts')" title="Text to Speech">
+                        <i data-lucide="volume-2"></i>
+                    </button>
+                    <button class="nav-icon-btn" onclick="switchView('stt')" title="Speech to Text">
+                        <i data-lucide="mic"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="nav-label">History</div>
+            <div class="history-list" id="history-list">
+                <!-- Chat history items appear here -->
+            </div>
+
+            <div class="sidebar-footer">
+                <div style="margin-bottom: 5px; font-size: 11px; font-weight: bold;">
+                    <span id="status-indicator" class="status-loading">Connecting...</span>
+                </div>
+
+                <div class="credits-text">
+                    Powered by <br> <strong>Google Gemma 2</strong> <br> Open Weights
+                </div>
+
+                <button id="reload-btn" class="theme-toggle" style="margin-bottom: 5px; color: #60a5fa;">
+                    <i data-lucide="rotate-cw"></i> Refresh App
+                </button>
+                <button id="theme-toggle" class="theme-toggle">
+                    <i data-lucide="moon"></i> Theme
+                </button>
+            </div>
+        </div>
+
+        <!-- MAIN CONTENT -->
+        <div class="main-content">
+
+            <!-- 1. CHAT VIEW -->
+            <div id="view-chat" class="view-section active">
+                <div class="chat-header">
+                    <div class="header-info">
+                        <img id="current-persona-avatar" class="header-avatar hidden" src="" alt="Avatar">
+                        <div style="display:flex; flex-direction:column;">
+                            <span style="font-size:10px; opacity:0.6;">Chatting with:</span>
+                            <select id="active-persona-select" class="header-dropdown"></select>
+                        </div>
+                    </div>
+                </div>
+                <div class="chat-area" id="chat-area">
+                    <div id="welcome-screen" class="welcome-screen">
+                        <img src="remiai.ico" alt="Logo" class="large-logo">
+                        <h1>RemiAI bujji</h1>
+                        <p>Select a character or start typing.</p>
+                    </div>
+                </div>
+                <div class="input-container">
+                    <div class="input-box-wrapper">
+                        <textarea id="user-input" rows="1" placeholder="Type a message..."></textarea>
+                        <button id="send-btn"><i data-lucide="send"></i></button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TTS VIEW -->
+            <div id="view-tts" class="view-section hidden">
+                <div class="tts-stt-container">
+                    <div class="tts-stt-header">
+                        <i data-lucide="volume-2" class="tts-stt-icon"></i>
+                        <h2>Text to Speech</h2>
+                        <p>Type any text below and convert it to speech using the offline Piper TTS engine.</p>
+                    </div>
+                    <textarea id="tts-input" class="tts-stt-textarea" rows="6"
+                        placeholder="Enter text to convert to speech..."></textarea>
+                    <div class="tts-stt-controls">
+                        <button id="tts-speak-btn" class="primary-btn" onclick="synthesizeSpeech()">
+                            <i data-lucide="play"></i> Speak
+                        </button>
+                        <span id="tts-status" class="tts-stt-status"></span>
+                    </div>
+                    <div id="tts-audio-container" class="tts-audio-container hidden">
+                        <audio id="tts-audio-player" controls></audio>
+                        <button class="secondary-btn" id="tts-download-btn" onclick="downloadTtsAudio()"
+                            style="margin-top:8px;">
+                            <i data-lucide="download"></i> Download Audio
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STT VIEW -->
+            <div id="view-stt" class="view-section hidden">
+                <div class="tts-stt-container">
+                    <div class="tts-stt-header">
+                        <i data-lucide="mic" class="tts-stt-icon"></i>
+                        <h2>Speech to Text</h2>
+                        <p>Upload an audio file (.mp3 or .wav) and extract the text using the offline Whisper STT
+                            engine.</p>
+                    </div>
+                    <div class="stt-upload-zone" id="stt-upload-zone">
+                        <i data-lucide="upload" class="stt-upload-icon"></i>
+                        <p id="stt-file-name">Click to select an audio file</p>
+                        <span class="stt-file-types">Supports: .wav, .mp3, .m4a</span>
+                        <button id="stt-select-btn" class="secondary-btn" onclick="selectAudioFile()">
+                            <i data-lucide="folder-open"></i> Browse Files
+                        </button>
+                    </div>
+                    <div class="tts-stt-controls">
+                        <button id="stt-transcribe-btn" class="primary-btn" onclick="transcribeAudio()" disabled>
+                            <i data-lucide="file-text"></i> Transcribe
+                        </button>
+                        <span id="stt-status" class="tts-stt-status"></span>
+                    </div>
+                    <div id="stt-result-container" class="stt-result-container hidden">
+                        <label>Transcribed Text:</label>
+                        <textarea id="stt-result" class="tts-stt-textarea" rows="8" readonly
+                            placeholder="Transcribed text will appear here..."></textarea>
+                        <button class="secondary-btn" onclick="copySttResult()" style="margin-top:8px;">
+                            <i data-lucide="copy"></i> Copy Text
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PLACEHOLDERS for other views -->
+            <div id="view-habits" class="view-section hidden centered-view">
+                <h2>Habit Tracker</h2>
+                <p>Habit tools will load here.</p>
+            </div>
+            <div id="view-games" class="view-section hidden centered-view">
+                <h2>Games Arcade</h2>
+                <p>Games will load here.</p>
+            </div>
+            <div id="view-fashion" class="view-section hidden centered-view">
+                <h2>Fashion Friend</h2>
+                <p>Style advice will load here.</p>
+            </div>
+            <div id="view-astro" class="view-section hidden centered-view">
+                <h2>Astro Master</h2>
+                <p>Horoscope will load here.</p>
+            </div>
+            <div id="view-productivity" class="view-section hidden centered-view">
+                <h2>Productivity</h2>
+                <p>Task tools will load here.</p>
+            </div>
+            <div id="view-breathing" class="view-section hidden centered-view">
+                <h2>Breathing Coach</h2>
+                <p>Relaxation tools will load here.</p>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- MODALS -->
+    <div id="manage-personas-modal" class="modal-overlay hidden">
+        <div class="modal-content large">
+            <h3>Create New Character</h3>
+            <div class="persona-form">
+                <div class="form-group"><label>Name</label><input type="text" id="p-name" class="modal-input"></div>
+                <div class="form-group"><label>Relation</label><input type="text" id="p-relation" class="modal-input">
+                </div>
+                <div class="form-group"><label>Gender</label><select id="p-gender" class="modal-input">
+                        <option value="Female">Female</option>
+                        <option value="Male">Male</option>
+                    </select></div>
+                <div class="form-group"><label>Instructions</label><textarea id="p-instruction" class="modal-input"
+                        rows="3"></textarea></div>
+                <div class="form-group full-width">
+                    <label>Avatar Image</label>
+                    <input type="file" id="p-sticker-file" class="modal-input">
+                    <img id="p-preview" src=""
+                        style="width:30px;height:30px;border-radius:50%;display:none;margin-top:5px;">
+                </div>
+                <div class="form-group full-width">
+                    <label>Response Length</label>
+                    <select id="p-length" class="modal-input">
+                        <option value="short">Short</option>
+                        <option value="medium">Medium</option>
+                        <option value="detailed">Detailed</option>
+                    </select>
+                </div>
+                <button id="save-persona-btn" class="primary-btn full-width">Save</button>
+            </div>
+            <div class="persona-list-display" id="persona-list-display"></div>
+            <button id="close-manage-btn" class="secondary-btn" style="width:100%; margin-top:10px;">Close</button>
+        </div>
+    </div>
+
+    <div id="delete-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3>Delete Chat?</h3>
+            <div class="modal-actions">
+                <button id="cancel-delete" class="btn-cancel">Cancel</button>
+                <button id="confirm-delete" class="btn-delete">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="persona-delete-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3>Delete Character?</h3>
+            <div class="modal-actions">
+                <button id="cancel-persona-delete" class="btn-cancel">Cancel</button>
+                <button id="confirm-persona-delete" class="btn-delete">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="renderer.js"></script>
+    <script>lucide.createIcons();</script>
+</body>
+
+</html>

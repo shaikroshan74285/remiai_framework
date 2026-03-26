@@ -1,0 +1,77 @@
+{
+  "name": "remiai",
+  "version": "2.0.0",
+  "description": "RemiAI Framework for to build the windows desktop applications",
+  "main": "main.js",
+  "author": "RemiAI Startup",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder",
+    "pack": "electron-builder --dir"
+  },
+  "build": {
+    "appId": "com.remiai.framework",
+    "productName": "RemiAI Framework",
+    "compression": "maximum",
+    "asar": true,
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "remiai.ico",
+      "requestedExecutionLevel": "asInvoker"
+    },
+    "nsis": {
+      "warningsAsErrors": false,
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "RemiAI Framework",
+      "runAfterFinish": true,
+      "customNsisBinary": {
+        "url": "https://github.com/SoundSafari/NSISBI-ElectronBuilder/releases/download/1.0.0/nsisbi-electronbuilder-3.10.3.7z",
+        "version": "3.10.3",
+        "checksum": "WRmZUsACjIc2s7bvsFGFRofK31hfS7riPlcfI1V9uFB2Q8s7tidgI/9U16+X0I9X2ZhNxi8N7Z3gKvm6ojvLvg=="
+      }
+    },
+    "files": [
+      "**/*",
+      "!dist/*",
+      "!release/*",
+      "!engine/*",
+      "!bin/*",
+      "!venv/*",
+      "!src/*",
+      "!.git/*",
+      "!.vscode/*"
+    ],
+    "extraResources": [
+      {
+        "from": "engine",
+        "to": "engine",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "bin",
+        "to": "bin",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ]
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "dependencies": {
+    "lucide": "^0.564.0",
+    "marked": "^17.0.2",
+    "systeminformation": "^5.23.4"
+  }
+}
