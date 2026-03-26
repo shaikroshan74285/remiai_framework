@@ -12,7 +12,7 @@
 
 👉 This repository contains **ONLY SOURCE CODE**
 
-👉 The **FULL WORKING PROJECT (with .exe, .dll, models, binaries)** is available here:
+👉 The **FULL WORKING PROJECT (with .exe, .dll, binaries)** is available here:
 
 🔗 **Download from Releases:**
 https://github.com/shaikroshan74285/Edge_gallery/releases
